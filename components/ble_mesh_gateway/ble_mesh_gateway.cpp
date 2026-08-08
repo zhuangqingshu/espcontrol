@@ -102,7 +102,7 @@ bool BleMeshGateway::init_ble_mesh() {
   composition.vid = 0x0001;
   composition.crpl = 10;
 
-  ret = ble_mesh_init(&provision, &composition);
+  ret = esp_ble_mesh_init(&provision, &composition);
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "BLE Mesh init failed: %d", ret);
     return false;
