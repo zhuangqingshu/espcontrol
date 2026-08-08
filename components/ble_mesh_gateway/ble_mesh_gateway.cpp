@@ -7,27 +7,15 @@
 #include "esp_ble_mesh_common_api.h"
 #include "esp_ble_mesh_provisioning_api.h"
 #include "esp_ble_mesh_networking_api.h"
-#include "nimble/nimble_port.h"
-#include "nimble/nimble_port_freertos.h"
 
 namespace ble_mesh_gateway {
 
 static const char *const TAG = "ble_mesh_gateway";
 
-static BleMeshGateway *s_instance = nullptr;
-
 static constexpr uint8_t kDeviceUuid[16] = {0xDD, 0xDD};
 
 static esp_ble_mesh_prov_t provision = {};
 static esp_ble_mesh_comp_t composition = {};
-
-static esp_ble_mesh_client_t config_client = {};
-
-static constexpr uint8_t kNetKey[16] = {0};
-static constexpr uint8_t kAppKey[16] = {0};
-static constexpr uint16_t kNetKeyIdx = 0;
-static constexpr uint16_t kAppKeyIdx = 0;
-static constexpr uint32_t kIvIndex = 0;
 
 static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
                                  esp_ble_mesh_prov_cb_param_t *param) {
@@ -55,12 +43,10 @@ static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
                param->provisioner_prov_link_close.reason);
       break;
     case ESP_BLE_MESH_PROVISIONER_PROV_COMPLETE_EVT:
-      ESP_LOGI(TAG, "Provisioning complete, node %04X",
-               param->provisioner_prov_complete.node_index);
+      ESP_LOGI(TAG, "Provisioning complete");
       break;
     case ESP_BLE_MESH_PROVISIONER_ADD_UNPROV_DEV_COMP_EVT:
-      ESP_LOGI(TAG, "Provisioning started, err=%d",
-               param->provisioner_add_unprov_dev_comp.err_code);
+      ESP_LOGI(TAG, "Provisioning started");
       break;
     default:
       break;
@@ -69,22 +55,7 @@ static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
 
 static void config_client_callback(esp_ble_mesh_cfg_client_cb_event_t event,
                                    esp_ble_mesh_cfg_client_cb_param_t *param) {
-  switch (event) {
-    case ESP_BLE_MESH_CFG_CLIENT_GET_STATE_EVT:
-      ESP_LOGI(TAG, "Config client get state event");
-      break;
-    case ESP_BLE_MESH_CFG_CLIENT_SET_STATE_EVT:
-      ESP_LOGI(TAG, "Config client set state event");
-      break;
-    case ESP_BLE_MESH_CFG_CLIENT_PUBLISH_EVT:
-      ESP_LOGI(TAG, "Config client publish event");
-      break;
-    case ESP_BLE_MESH_CFG_CLIENT_TIMEOUT_EVT:
-      ESP_LOGI(TAG, "Config client timeout");
-      break;
-    default:
-      break;
-  }
+  ESP_LOGI(TAG, "Config client event: %d", event);
 }
 
 bool BleMeshGateway::init_ble_controller() {
@@ -114,12 +85,6 @@ bool BleMeshGateway::init_ble_controller() {
 
 bool BleMeshGateway::init_ble_mesh() {
   esp_err_t ret;
-
-  ret = nimble_port_init();
-  if (ret != ESP_OK) {
-    ESP_LOGE(TAG, "NimBLE port init failed: %s", esp_err_to_name(ret));
-    return false;
-  }
 
   esp_ble_mesh_register_prov_callback(provisioner_callback);
   esp_ble_mesh_register_config_client_callback(config_client_callback);
@@ -159,7 +124,6 @@ bool BleMeshGateway::init_ble_mesh() {
 }
 
 void BleMeshGateway::setup() {
-  s_instance = this;
   ESP_LOGI(TAG, "BLE Mesh Gateway component starting");
 
   if (!init_ble_controller()) {
