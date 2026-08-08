@@ -42,7 +42,6 @@ class BleMeshGateway : public esphome::Component {
   bool init_ble_controller();
   bool init_ble_mesh();
   void send_generic_onoff_set(uint16_t node_addr, uint16_t net_idx, bool on);
-  void update_switch_state(uint8_t slot, bool on);
 
   static constexpr uint8_t kMaxNodes = 10;
   MeshNode nodes_[kMaxNodes];
