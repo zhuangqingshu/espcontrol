@@ -28,6 +28,15 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
+    import os
+    idf_path = os.environ.get("IDF_PATH", "")
+    if idf_path:
+        cg.add_build_flag(f"-I{idf_path}/components/bt/esp_ble_mesh/api")
+        cg.add_build_flag(f"-I{idf_path}/components/bt/esp_ble_mesh/api/core")
+        cg.add_build_flag(f"-I{idf_path}/components/bt/esp_ble_mesh/include")
+        cg.add_build_flag(f"-I{idf_path}/components/bt/host/nimble/nimble")
+        cg.add_build_flag(f"-I{idf_path}/components/bt/host/nimble/port/include")
+
     add_idf_sdkconfig_option("CONFIG_BT_ENABLED", True)
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_ENABLED", True)
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MESH", True)
