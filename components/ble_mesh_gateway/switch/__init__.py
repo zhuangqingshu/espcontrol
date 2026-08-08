@@ -9,6 +9,8 @@ import esphome.config_validation as cv
 from esphome.components import switch
 from esphome.const import CONF_ID
 
+from esphome.core import ID
+
 from .. import ble_mesh_gateway_ns
 
 DEPENDENCIES = ["ble_mesh_gateway"]
@@ -29,5 +31,5 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await switch.register_switch(var, config)
     cg.add(var.set_slot(config[CONF_SLOT]))
-    gateway = await cg.get_variable("ble_mesh_gw")
+    gateway = await cg.get_variable(ID("ble_mesh_gw"))
     cg.add(var.set_gateway(gateway))
