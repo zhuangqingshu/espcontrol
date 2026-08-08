@@ -19,6 +19,9 @@ struct MeshNode {
   uint16_t net_idx;
   bool provisioned;
   bool onoff_state;
+  bool comp_data_received;
+  bool has_onoff_model;
+  esphome::switch_::Switch *onoff_switch;
 };
 
 class BleMeshGateway : public esphome::Component {
@@ -29,25 +32,28 @@ class BleMeshGateway : public esphome::Component {
 
   uint8_t node_count() const { return node_count_; }
   const MeshNode *get_node(uint8_t index) const;
+  MeshNode *find_node_by_addr(uint16_t addr);
   void start_provisioning(const uint8_t *uuid, const uint8_t *addr,
                           uint8_t addr_type, uint16_t oob_info);
   void configure_node(uint16_t node_addr, uint16_t net_idx);
 
-  void set_node_onoff(uint8_t slot, bool state);
-  bool get_node_onoff(uint8_t slot) const;
-  void register_switch(uint8_t slot, esphome::switch_::Switch *sw);
-  void update_switch_state(uint8_t slot, bool on);
+  void send_generic_onoff_set(uint16_t node_addr, uint16_t net_idx, bool on);
+  void send_generic_onoff_get(uint16_t node_addr, uint16_t net_idx);
+
+  void request_composition_data(uint16_t node_addr, uint16_t net_idx);
+  void handle_composition_data(uint16_t node_addr, const uint8_t *data,
+                                uint16_t length);
+  void bind_onoff_model(uint16_t node_addr, uint16_t net_idx);
+  void create_onoff_switch(uint8_t slot);
 
  private:
   bool init_ble_controller();
   bool init_ble_mesh();
-  void send_generic_onoff_set(uint16_t node_addr, uint16_t net_idx, bool on);
 
   static constexpr uint8_t kMaxNodes = 10;
   MeshNode nodes_[kMaxNodes];
   uint8_t node_count_{0};
   bool initialized_{false};
-  esphome::switch_::Switch *switches_[kMaxNodes] = {};
 };
 
 }  // namespace ble_mesh_gateway

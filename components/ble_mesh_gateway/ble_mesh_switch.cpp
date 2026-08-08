@@ -5,7 +5,7 @@ namespace ble_mesh_gateway {
 
 void BleMeshSwitch::write_state(bool state) {
   if (gateway_ != nullptr) {
-    gateway_->set_node_onoff(slot_, state);
+    gateway_->send_generic_onoff_set(unicast_addr_, net_idx_, state);
   }
 }
 
