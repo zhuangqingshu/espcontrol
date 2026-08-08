@@ -3,7 +3,6 @@
 #include "esphome/core/log.h"
 
 #include "esp_bt.h"
-#include "esp_bt_device.h"
 #include "esp_ble_mesh_defs.h"
 #include "esp_ble_mesh_common_api.h"
 #include "esp_ble_mesh_provisioning_api.h"
@@ -124,9 +123,6 @@ bool BleMeshGateway::init_ble_mesh() {
 
   esp_ble_mesh_register_prov_callback(provisioner_callback);
   esp_ble_mesh_register_config_client_callback(config_client_callback);
-
-  const uint8_t dev_uuid[16] = {0};
-  esp_ble_mesh_get_dev_uuid(const_cast<uint8_t *>(dev_uuid));
 
   provision.prov_uuid = kDeviceUuid;
   provision.prov_unicast_addr = 0x0001;
