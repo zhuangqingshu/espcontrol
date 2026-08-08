@@ -7,12 +7,23 @@
 #include "esp_ble_mesh_common_api.h"
 #include "esp_ble_mesh_provisioning_api.h"
 #include "esp_ble_mesh_networking_api.h"
+#include "esp_ble_mesh_config_model_api.h"
+
+#include <cstring>
 
 namespace ble_mesh_gateway {
 
 static const char *const TAG = "ble_mesh_gateway";
 
 static constexpr uint8_t kDevUuid[16] = {0xDD, 0xDD};
+static constexpr uint8_t kNetKey[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+                                        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10};
+static constexpr uint8_t kAppKey[16] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+                                        0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20};
+static constexpr uint16_t kNetKeyIdx = 0;
+static constexpr uint16_t kAppKeyIdx = 0;
+
+static BleMeshGateway *s_instance = nullptr;
 
 static esp_ble_mesh_prov_t provision = {
     .prov_uuid = kDevUuid,
@@ -39,37 +50,144 @@ static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
     case ESP_BLE_MESH_PROV_REGISTER_COMP_EVT:
       ESP_LOGI(TAG, "Provisioner registered");
       break;
+
     case ESP_BLE_MESH_PROVISIONER_RECV_UNPROV_ADV_PKT_EVT: {
+      auto &pkt = param->provisioner_recv_unprov_adv_pkt;
       char uuid_str[37];
       for (int i = 0; i < 16; i++) {
-        snprintf(uuid_str + i * 2, 3, "%02X",
-                 param->provisioner_recv_unprov_adv_pkt.dev_uuid[i]);
+        snprintf(uuid_str + i * 2, 3, "%02X", pkt.dev_uuid[i]);
       }
       ESP_LOGI(TAG, "Discovered device UUID=%s addr=%02X:%02X:%02X:%02X:%02X:%02X rssi=%d",
-               uuid_str,
-               param->provisioner_recv_unprov_adv_pkt.addr[0],
-               param->provisioner_recv_unprov_adv_pkt.addr[1],
-               param->provisioner_recv_unprov_adv_pkt.addr[2],
-               param->provisioner_recv_unprov_adv_pkt.addr[3],
-               param->provisioner_recv_unprov_adv_pkt.addr[4],
-               param->provisioner_recv_unprov_adv_pkt.addr[5],
-               param->provisioner_recv_unprov_adv_pkt.rssi);
+               uuid_str, pkt.addr[0], pkt.addr[1], pkt.addr[2],
+               pkt.addr[3], pkt.addr[4], pkt.addr[5], pkt.rssi);
+
+      if (s_instance && s_instance->node_count() < 10) {
+        s_instance->start_provisioning(pkt.dev_uuid, pkt.addr,
+                                       pkt.addr_type, pkt.oob_info);
+      }
       break;
     }
+
+    case ESP_BLE_MESH_PROVISIONER_ADD_UNPROV_DEV_COMP_EVT:
+      ESP_LOGI(TAG, "Add unprov device complete, err=%d",
+               param->provisioner_add_unprov_dev_comp.err_code);
+      break;
+
     case ESP_BLE_MESH_PROVISIONER_PROV_LINK_OPEN_EVT:
       ESP_LOGI(TAG, "Provisioning link opened");
       break;
+
     case ESP_BLE_MESH_PROVISIONER_PROV_LINK_CLOSE_EVT:
       ESP_LOGI(TAG, "Provisioning link closed, reason=%d",
                param->provisioner_prov_link_close.reason);
       break;
-    case ESP_BLE_MESH_PROVISIONER_PROV_COMPLETE_EVT:
-      ESP_LOGI(TAG, "Provisioning complete, node_index=%d",
-               param->provisioner_prov_complete.node_idx);
+
+    case ESP_BLE_MESH_PROVISIONER_PROV_COMPLETE_EVT: {
+      auto &comp = param->provisioner_prov_complete;
+      ESP_LOGI(TAG, "Provisioning complete: node_idx=%d unicast=0x%04X elements=%d net_idx=0x%04X",
+               comp.node_idx, comp.unicast_addr, comp.element_num, comp.netkey_idx);
+      if (s_instance) {
+        s_instance->configure_node(comp.unicast_addr, comp.netkey_idx);
+      }
       break;
+    }
+
+    case ESP_BLE_MESH_PROVISIONER_ADD_LOCAL_NET_KEY_COMP_EVT:
+      ESP_LOGI(TAG, "Local net key added, err=%d",
+               param->provisioner_add_local_net_key_comp.err_code);
+      break;
+
+    case ESP_BLE_MESH_PROVISIONER_ADD_LOCAL_APP_KEY_COMP_EVT:
+      ESP_LOGI(TAG, "Local app key added, err=%d",
+               param->provisioner_add_local_app_key_comp.err_code);
+      break;
+
+    case ESP_BLE_MESH_PROVISIONER_SET_DEV_UUID_MATCH_COMP_EVT:
+      ESP_LOGI(TAG, "Dev UUID match set, err=%d",
+               param->provisioner_set_dev_uuid_match_comp.err_code);
+      break;
+
+    case ESP_BLE_MESH_PROVISIONER_SET_PROV_DATA_INFO_COMP_EVT:
+      ESP_LOGI(TAG, "Prov data info set, err=%d",
+               param->provisioner_set_prov_data_info_comp.err_code);
+      break;
+
+    case ESP_BLE_MESH_MODEL_EVT:
+      ESP_LOGI(TAG, "Model event received");
+      break;
+
     default:
       break;
   }
+}
+
+static void config_client_callback(esp_ble_mesh_cfg_client_cb_event_t event,
+                                   esp_ble_mesh_cfg_client_cb_param_t *param) {
+  ESP_LOGI(TAG, "Config client event: %d", event);
+  if (param) {
+    ESP_LOGI(TAG, "  status=%d", param->params->status);
+  }
+}
+
+void BleMeshGateway::start_provisioning(const uint8_t *uuid,
+                                         const uint8_t *addr,
+                                         uint8_t addr_type,
+                                         uint16_t oob_info) {
+  esp_ble_mesh_unprov_dev_add_t add_dev = {};
+  memcpy(add_dev.addr, addr, 6);
+  add_dev.addr_type = static_cast<esp_ble_mesh_addr_type_t>(addr_type);
+  memcpy(add_dev.uuid, uuid, 16);
+  add_dev.oob_info = oob_info;
+  add_dev.bearer = static_cast<esp_ble_mesh_prov_bearer_t>(
+      ESP_BLE_MESH_PROV_ADV | ESP_BLE_MESH_PROV_GATT);
+
+  esp_err_t ret = esp_ble_mesh_provisioner_add_unprov_dev(
+      &add_dev,
+      ADD_DEV_RM_AFTER_PROV_FLAG | ADD_DEV_START_PROV_NOW_FLAG |
+          ADD_DEV_FLUSHABLE_DEV_FLAG);
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to add device for provisioning: %d", ret);
+  } else {
+    ESP_LOGI(TAG, "Auto-provisioning device");
+  }
+}
+
+void BleMeshGateway::configure_node(uint16_t node_addr, uint16_t net_idx) {
+  if (node_count_ >= kMaxNodes) {
+    ESP_LOGW(TAG, "Node table full, cannot track more devices");
+    return;
+  }
+
+  auto &node = nodes_[node_count_];
+  node.unicast_addr = node_addr;
+  node.net_idx = net_idx;
+  node.provisioned = true;
+  node_count_++;
+
+  ESP_LOGI(TAG, "Node %d configured: unicast=0x%04X", node_count_ - 1, node_addr);
+
+  esp_ble_mesh_cfg_client_set_state_t set_state = {};
+  set_state.model_app_bind.element_addr = node_addr;
+  set_state.model_app_bind.app_idx = kAppKeyIdx;
+  set_state.model_app_bind.model_id = 0x1000;
+  set_state.model_app_bind.company_id = 0xFFFF;
+
+  esp_err_t ret = esp_ble_mesh_cfg_client_set_state(
+      net_idx, node_addr, &set_state,
+      ESP_BLE_MESH_MODEL_OP_MODEL_APP_BIND);
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to send model app bind: %d", ret);
+  } else {
+    ESP_LOGI(TAG, "Sent app key bind for Generic OnOff (0x1000) on node 0x%04X",
+             node_addr);
+  }
+}
+
+const MeshNode *BleMeshGateway::get_node(uint8_t index) const {
+  if (index < node_count_) {
+    return &nodes_[index];
+  }
+  return nullptr;
 }
 
 bool BleMeshGateway::init_ble_controller() {
@@ -114,6 +232,19 @@ bool BleMeshGateway::init_ble_mesh() {
     ESP_LOGW(TAG, "Set dev UUID match failed: %d", ret);
   }
 
+  ret = esp_ble_mesh_provisioner_add_local_net_key(kNetKey, kNetKeyIdx);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Add net key failed: %d", ret);
+    return false;
+  }
+
+  ret = esp_ble_mesh_provisioner_add_local_app_key(
+      kAppKey, kNetKeyIdx, kAppKeyIdx);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Add app key failed: %d", ret);
+    return false;
+  }
+
   ret = esp_ble_mesh_provisioner_prov_enable(
       static_cast<esp_ble_mesh_prov_bearer_t>(ESP_BLE_MESH_PROV_ADV |
                                               ESP_BLE_MESH_PROV_GATT));
@@ -122,11 +253,13 @@ bool BleMeshGateway::init_ble_mesh() {
     return false;
   }
 
-  ESP_LOGI(TAG, "BLE Mesh provisioner started, scanning for devices");
+  ESP_LOGI(TAG, "BLE Mesh provisioner started (net_idx=0x%04X, app_idx=0x%04X)",
+           kNetKeyIdx, kAppKeyIdx);
   return true;
 }
 
 void BleMeshGateway::setup() {
+  s_instance = this;
   ESP_LOGI(TAG, "BLE Mesh Gateway component starting");
 
   if (!init_ble_controller()) {
