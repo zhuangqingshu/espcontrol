@@ -415,7 +415,7 @@ void BleMeshGateway::create_onoff_switch(uint8_t slot) {
   snprintf(name, sizeof(name), "BLE Mesh 0x%04X", node.unicast_addr);
   uint32_t hash = 0x424C0000 | (node.unicast_addr & 0xFFFF);
 
-  App.register_switch(sw, name, hash, 0);
+  esphome::App.register_switch(sw, name, hash, 0);
 
   node.onoff_switch = sw;
   ESP_LOGI(TAG, "Created switch entity '%s' for node 0x%04X", name,
