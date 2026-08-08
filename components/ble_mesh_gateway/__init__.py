@@ -44,6 +44,7 @@ async def to_code(config):
     add_idf_sdkconfig_option("CONFIG_BLE_MESH_PROXY", True)
     add_idf_sdkconfig_option("CONFIG_BLE_MESH_RELAY", True)
     add_idf_sdkconfig_option("CONFIG_BLE_MESH_CFG_CLI", True)
+    add_idf_sdkconfig_option("CONFIG_BLE_MESH_GENERIC_CLIENT", True)
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_ROLE_CENTRAL", True)
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_ROLE_OBSERVER", True)
     add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_CONNECTIONS", 4)

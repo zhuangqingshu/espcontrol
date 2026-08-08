@@ -4,6 +4,12 @@
 
 #include <cstdint>
 
+namespace esphome {
+namespace switch_ {
+class Switch;
+}  // namespace switch_
+}  // namespace esphome
+
 namespace ble_mesh_gateway {
 
 struct MeshNode {
@@ -12,6 +18,7 @@ struct MeshNode {
   uint16_t unicast_addr;
   uint16_t net_idx;
   bool provisioned;
+  bool onoff_state;
 };
 
 class BleMeshGateway : public esphome::Component {
@@ -26,14 +33,21 @@ class BleMeshGateway : public esphome::Component {
                           uint8_t addr_type, uint16_t oob_info);
   void configure_node(uint16_t node_addr, uint16_t net_idx);
 
+  void set_node_onoff(uint8_t slot, bool state);
+  bool get_node_onoff(uint8_t slot) const;
+  void register_switch(uint8_t slot, esphome::switch_::Switch *sw);
+
  private:
   bool init_ble_controller();
   bool init_ble_mesh();
+  void send_generic_onoff_set(uint16_t node_addr, uint16_t net_idx, bool on);
+  void update_switch_state(uint8_t slot, bool on);
 
   static constexpr uint8_t kMaxNodes = 10;
   MeshNode nodes_[kMaxNodes];
   uint8_t node_count_{0};
   bool initialized_{false};
+  esphome::switch_::Switch *switches_[kMaxNodes] = {};
 };
 
 }  // namespace ble_mesh_gateway

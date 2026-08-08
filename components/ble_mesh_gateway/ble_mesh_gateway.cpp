@@ -1,5 +1,6 @@
 #include "ble_mesh_gateway.h"
 
+#include "esphome/components/switch/switch.h"
 #include "esphome/core/log.h"
 
 #include "esp_bt.h"
@@ -8,6 +9,7 @@
 #include "esp_ble_mesh_provisioning_api.h"
 #include "esp_ble_mesh_networking_api.h"
 #include "esp_ble_mesh_config_model_api.h"
+#include "esp_ble_mesh_generic_model_api.h"
 
 #include <cstring>
 
@@ -43,6 +45,41 @@ static esp_ble_mesh_comp_t composition = {
     .element_count = 0,
     .elements = nullptr,
 };
+
+static void generic_client_callback(
+    esp_ble_mesh_generic_client_cb_event_t event,
+    esp_ble_mesh_generic_client_cb_param_t *param) {
+  switch (event) {
+    case ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT:
+      if (param->status_cb.onoff_status.present_onoff != 0xFF) {
+        ESP_LOGI(TAG, "Generic OnOff status: present=%d",
+                 param->status_cb.onoff_status.present_onoff);
+        if (s_instance && param->params) {
+          uint16_t src = param->params->ctx.addr;
+          for (uint8_t i = 0; i < s_instance->node_count(); i++) {
+            auto *node = s_instance->get_node(i);
+            if (node && node->unicast_addr == src) {
+              bool on = param->status_cb.onoff_status.present_onoff != 0;
+              s_instance->update_switch_state(i, on);
+              break;
+            }
+          }
+        }
+      }
+      break;
+    case ESP_BLE_MESH_GENERIC_CLIENT_SET_STATE_EVT:
+      ESP_LOGI(TAG, "Generic OnOff set ack");
+      break;
+    case ESP_BLE_MESH_GENERIC_CLIENT_PUBLISH_EVT:
+      ESP_LOGI(TAG, "Generic OnOff publish event");
+      break;
+    case ESP_BLE_MESH_GENERIC_CLIENT_TIMEOUT_EVT:
+      ESP_LOGW(TAG, "Generic OnOff timeout");
+      break;
+    default:
+      break;
+  }
+}
 
 static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
                                  esp_ble_mesh_prov_cb_param_t *param) {
@@ -107,6 +144,64 @@ static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
   }
 }
 
+void BleMeshGateway::set_node_onoff(uint8_t slot, bool state) {
+  if (slot >= node_count_) {
+    ESP_LOGW(TAG, "set_node_onoff: invalid slot %d", slot);
+    return;
+  }
+
+  auto &node = nodes_[slot];
+  send_generic_onoff_set(node.unicast_addr, node.net_idx, state);
+}
+
+bool BleMeshGateway::get_node_onoff(uint8_t slot) const {
+  if (slot >= node_count_)
+    return false;
+  return nodes_[slot].onoff_state;
+}
+
+void BleMeshGateway::register_switch(uint8_t slot,
+                                     esphome::switch_::Switch *sw) {
+  if (slot < kMaxNodes) {
+    switches_[slot] = sw;
+  }
+}
+
+void BleMeshGateway::update_switch_state(uint8_t slot, bool on) {
+  if (slot < node_count_) {
+    nodes_[slot].onoff_state = on;
+  }
+  if (slot < kMaxNodes && switches_[slot] != nullptr) {
+    switches_[slot]->publish_state(on);
+  }
+}
+
+void BleMeshGateway::send_generic_onoff_set(uint16_t node_addr,
+                                             uint16_t net_idx, bool on) {
+  esp_ble_mesh_msg_ctx_t ctx = {};
+  ctx.net_idx = net_idx;
+  ctx.addr = node_addr;
+  ctx.app_idx = kAppKeyIdx;
+  ctx.send_ttl = 4;
+
+  esp_ble_mesh_client_common_param_t common = {};
+  common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET;
+  common.ctx = ctx;
+  common.msg_timeout = 0;
+
+  esp_ble_mesh_generic_client_set_state_t set_state = {};
+  set_state.onoff_set.onoff = on ? 1 : 0;
+  set_state.onoff_set.tid = 0;
+
+  esp_err_t ret = esp_ble_mesh_generic_client_set_state(&common,
+                                                         &set_state);
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to send OnOff set to 0x%04X: %d", node_addr, ret);
+  } else {
+    ESP_LOGI(TAG, "Sent OnOff=%d to node 0x%04X", on, node_addr);
+  }
+}
+
 void BleMeshGateway::start_provisioning(const uint8_t *uuid,
                                          const uint8_t *addr,
                                          uint8_t addr_type,
@@ -140,6 +235,7 @@ void BleMeshGateway::configure_node(uint16_t node_addr, uint16_t net_idx) {
   node.unicast_addr = node_addr;
   node.net_idx = net_idx;
   node.provisioned = true;
+  node.onoff_state = false;
   node_count_++;
 
   ESP_LOGI(TAG, "Node %d stored: unicast=0x%04X", node_count_ - 1, node_addr);
@@ -206,6 +302,7 @@ bool BleMeshGateway::init_ble_mesh() {
   esp_err_t ret;
 
   esp_ble_mesh_register_prov_callback(provisioner_callback);
+  esp_ble_mesh_register_generic_client_callback(generic_client_callback);
 
   ret = esp_ble_mesh_init(&provision, &composition);
   if (ret != ESP_OK) {

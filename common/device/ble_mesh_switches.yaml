@@ -1,0 +1,27 @@
+# BLE Mesh switch entities - one per potential mesh node slot
+# These map to Generic OnOff Server models on provisioned nodes.
+switch:
+  - platform: ble_mesh_gateway
+    name: "Mesh Switch 1"
+    id: mesh_switch_1
+    slot: 0
+
+  - platform: ble_mesh_gateway
+    name: "Mesh Switch 2"
+    id: mesh_switch_2
+    slot: 1
+
+  - platform: ble_mesh_gateway
+    name: "Mesh Switch 3"
+    id: mesh_switch_3
+    slot: 2
+
+  - platform: ble_mesh_gateway
+    name: "Mesh Switch 4"
+    id: mesh_switch_4
+    slot: 3
+
+  - platform: ble_mesh_gateway
+    name: "Mesh Switch 5"
+    id: mesh_switch_5
+    slot: 4
