@@ -26,3 +26,9 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+
+    cg.add_build_flag("-I${IDF_PATH}/components/bt/esp_ble_mesh/api")
+    cg.add_build_flag("-I${IDF_PATH}/components/bt/esp_ble_mesh/api/core")
+    cg.add_build_flag("-I${IDF_PATH}/components/bt/esp_ble_mesh/include")
+    cg.add_build_flag("-I${IDF_PATH}/components/bt/host/nimble/nimble")
+    cg.add_build_flag("-I${IDF_PATH}/components/bt/host/nimble/port/include")
