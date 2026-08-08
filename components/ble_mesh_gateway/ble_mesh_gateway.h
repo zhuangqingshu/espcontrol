@@ -7,7 +7,10 @@
 namespace esphome {
 namespace switch_ {
 class Switch;
-}  // namespace switch_
+}
+namespace number {
+class Number;
+}
 }  // namespace esphome
 
 namespace ble_mesh_gateway {
@@ -19,9 +22,12 @@ struct MeshNode {
   uint16_t net_idx;
   bool provisioned;
   bool onoff_state;
+  int16_t level_state;
   bool comp_data_received;
   bool has_onoff_model;
+  bool has_level_model;
   esphome::switch_::Switch *onoff_switch;
+  esphome::number::Number *level_number;
 };
 
 class BleMeshGateway : public esphome::Component {
@@ -39,12 +45,17 @@ class BleMeshGateway : public esphome::Component {
 
   void send_generic_onoff_set(uint16_t node_addr, uint16_t net_idx, bool on);
   void send_generic_onoff_get(uint16_t node_addr, uint16_t net_idx);
+  void send_generic_level_set(uint16_t node_addr, uint16_t net_idx,
+                              int16_t level);
+  void send_generic_level_get(uint16_t node_addr, uint16_t net_idx);
 
   void request_composition_data(uint16_t node_addr, uint16_t net_idx);
   void handle_composition_data(uint16_t node_addr, const uint8_t *data,
                                 uint16_t length);
   void bind_onoff_model(uint16_t node_addr, uint16_t net_idx);
+  void bind_level_model(uint16_t node_addr, uint16_t net_idx);
   void create_onoff_switch(uint8_t slot);
+  void create_level_number(uint8_t slot);
 
  private:
   bool init_ble_controller();

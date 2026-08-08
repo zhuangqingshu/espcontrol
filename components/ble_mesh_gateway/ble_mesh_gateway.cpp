@@ -1,6 +1,8 @@
 #include "ble_mesh_gateway.h"
 #include "ble_mesh_switch.h"
+#include "ble_mesh_number.h"
 
+#include "esphome/components/number/number.h"
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
 
@@ -65,8 +67,13 @@ static void config_client_callback(
         s_instance->handle_composition_data(src, buf->data, buf->len);
 
         auto *node = s_instance->find_node_by_addr(src);
-        if (node && node->has_onoff_model) {
-          s_instance->bind_onoff_model(src, node->net_idx);
+        if (node) {
+          if (node->has_onoff_model) {
+            s_instance->bind_onoff_model(src, node->net_idx);
+          }
+          if (node->has_level_model) {
+            s_instance->bind_level_model(src, node->net_idx);
+          }
         }
       }
       break;
@@ -79,9 +86,16 @@ static void config_client_callback(
 
       if (param->error_code == 0) {
         auto *node = s_instance->find_node_by_addr(src);
-        if (node && node->has_onoff_model && node->onoff_switch == nullptr) {
-          uint8_t slot = static_cast<uint8_t>(node - s_instance->get_node(0));
-          s_instance->create_onoff_switch(slot);
+        if (node) {
+          uint16_t model_id =
+              param->status_cb.model_app_status.model_id;
+          uint8_t slot =
+              static_cast<uint8_t>(node - s_instance->get_node(0));
+          if (model_id == 0x1000 && node->onoff_switch == nullptr) {
+            s_instance->create_onoff_switch(slot);
+          } else if (model_id == 0x1002 && node->level_number == nullptr) {
+            s_instance->create_level_number(slot);
+          }
         }
       }
       break;
@@ -106,9 +120,11 @@ static void generic_client_callback(
     return;
 
   switch (event) {
-    case ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT:
-      if (param->status_cb.onoff_status.present_onoff != 0xFF) {
-        uint16_t src = param->params ? param->params->ctx.addr : 0;
+    case ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT: {
+      uint16_t src = param->params ? param->params->ctx.addr : 0;
+      uint32_t opcode = param->params ? param->params->opcode : 0;
+
+      if (opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS) {
         bool on = param->status_cb.onoff_status.present_onoff != 0;
         ESP_LOGI(TAG, "OnOff status from 0x%04X: %s", src, on ? "ON" : "OFF");
 
@@ -119,8 +135,20 @@ static void generic_client_callback(
             node->onoff_switch->publish_state(on);
           }
         }
+      } else if (opcode == ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS) {
+        int16_t level = param->status_cb.level_status.present_level;
+        ESP_LOGI(TAG, "Level status from 0x%04X: %d", src, level);
+
+        auto *node = s_instance->find_node_by_addr(src);
+        if (node) {
+          node->level_state = level;
+          if (node->level_number) {
+            node->level_number->publish_state(level);
+          }
+        }
       }
       break;
+    }
 
     case ESP_BLE_MESH_GENERIC_CLIENT_SET_STATE_EVT:
       ESP_LOGI(TAG, "Generic OnOff set ack");
@@ -250,6 +278,56 @@ void BleMeshGateway::send_generic_onoff_get(uint16_t node_addr,
   }
 }
 
+void BleMeshGateway::send_generic_level_set(uint16_t node_addr,
+                                             uint16_t net_idx,
+                                             int16_t level) {
+  esp_ble_mesh_msg_ctx_t ctx = {};
+  ctx.net_idx = net_idx;
+  ctx.addr = node_addr;
+  ctx.app_idx = kAppKeyIdx;
+  ctx.send_ttl = 4;
+
+  esp_ble_mesh_client_common_param_t common = {};
+  common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET;
+  common.ctx = ctx;
+  common.msg_timeout = 0;
+
+  esp_ble_mesh_generic_client_set_state_t set_state = {};
+  set_state.level_set.op_en = false;
+  set_state.level_set.level = level;
+  set_state.level_set.tid = 0;
+
+  esp_err_t ret = esp_ble_mesh_generic_client_set_state(&common,
+                                                          &set_state);
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to send Level set to 0x%04X: %d", node_addr, ret);
+  } else {
+    ESP_LOGI(TAG, "Sent Level=%d to node 0x%04X", level, node_addr);
+  }
+}
+
+void BleMeshGateway::send_generic_level_get(uint16_t node_addr,
+                                             uint16_t net_idx) {
+  esp_ble_mesh_msg_ctx_t ctx = {};
+  ctx.net_idx = net_idx;
+  ctx.addr = node_addr;
+  ctx.app_idx = kAppKeyIdx;
+  ctx.send_ttl = 4;
+
+  esp_ble_mesh_client_common_param_t common = {};
+  common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_GET;
+  common.ctx = ctx;
+  common.msg_timeout = 0;
+
+  esp_ble_mesh_generic_client_get_state_t get_state = {};
+  esp_err_t ret = esp_ble_mesh_generic_client_get_state(&common, &get_state);
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to send Level get to 0x%04X: %d", node_addr, ret);
+  } else {
+    ESP_LOGI(TAG, "Sent Level get to node 0x%04X", node_addr);
+  }
+}
+
 void BleMeshGateway::start_provisioning(const uint8_t *uuid,
                                          const uint8_t *addr,
                                          uint8_t addr_type,
@@ -284,9 +362,12 @@ void BleMeshGateway::configure_node(uint16_t node_addr, uint16_t net_idx) {
   node.net_idx = net_idx;
   node.provisioned = true;
   node.onoff_state = false;
+  node.level_state = 0;
   node.comp_data_received = false;
   node.has_onoff_model = false;
+  node.has_level_model = false;
   node.onoff_switch = nullptr;
+  node.level_number = nullptr;
   node_count_++;
 
   ESP_LOGI(TAG, "Node %d stored: unicast=0x%04X, requesting composition data",
@@ -342,6 +423,7 @@ void BleMeshGateway::handle_composition_data(uint16_t node_addr,
   uint16_t offset = 10;
   uint16_t element_addr = node->unicast_addr;
   bool found_onoff = false;
+  bool found_level = false;
 
   while (offset + 4 <= length) {
     offset += 2;  // location descriptor
@@ -357,6 +439,10 @@ void BleMeshGateway::handle_composition_data(uint16_t node_addr,
         ESP_LOGI(TAG, "Found Generic OnOff Server on node 0x%04X element 0x%04X",
                  node->unicast_addr, element_addr);
         found_onoff = true;
+      } else if (model_id == 0x1002) {
+        ESP_LOGI(TAG, "Found Generic Level Server on node 0x%04X element 0x%04X",
+                 node->unicast_addr, element_addr);
+        found_level = true;
       }
     }
 
@@ -365,8 +451,9 @@ void BleMeshGateway::handle_composition_data(uint16_t node_addr,
   }
 
   node->has_onoff_model = found_onoff;
+  node->has_level_model = found_level;
 
-  if (!found_onoff) {
+  if (!found_onoff && !found_level) {
     ESP_LOGI(TAG, "Node 0x%04X has no supported models", node_addr);
   }
 }
@@ -422,6 +509,62 @@ void BleMeshGateway::create_onoff_switch(uint8_t slot) {
            node.unicast_addr);
 
   send_generic_onoff_get(node.unicast_addr, node.net_idx);
+}
+
+void BleMeshGateway::bind_level_model(uint16_t node_addr, uint16_t net_idx) {
+  esp_ble_mesh_msg_ctx_t ctx = {};
+  ctx.net_idx = net_idx;
+  ctx.addr = node_addr;
+  ctx.app_idx = kAppKeyIdx;
+  ctx.send_ttl = 4;
+
+  esp_ble_mesh_client_common_param_t common = {};
+  common.opcode = ESP_BLE_MESH_MODEL_OP_MODEL_APP_BIND;
+  common.ctx = ctx;
+  common.msg_timeout = 4000;
+
+  esp_ble_mesh_cfg_client_set_state_t set_state = {};
+  set_state.model_app_bind.element_addr = node_addr;
+  set_state.model_app_bind.model_app_idx = kAppKeyIdx;
+  set_state.model_app_bind.model_id = 0x1002;
+  set_state.model_app_bind.company_id = 0xFFFF;
+
+  esp_err_t ret = esp_ble_mesh_config_client_set_state(&common, &set_state);
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to send level model app bind: %d", ret);
+  } else {
+    ESP_LOGI(TAG, "Sent app key bind for Generic Level (0x1002) on 0x%04X",
+             node_addr);
+  }
+}
+
+void BleMeshGateway::create_level_number(uint8_t slot) {
+  if (slot >= node_count_) {
+    ESP_LOGW(TAG, "create_level_number: invalid slot %d", slot);
+    return;
+  }
+
+  auto &node = nodes_[slot];
+
+  auto *num = new BleMeshNumber();
+  num->set_gateway(this);
+  num->set_node_addr(node.unicast_addr);
+  num->set_net_idx(node.net_idx);
+  num->traits.set_min_value(-32768);
+  num->traits.set_max_value(32767);
+  num->traits.set_step(1);
+
+  char name[64];
+  snprintf(name, sizeof(name), "BLE Mesh 0x%04X Level", node.unicast_addr);
+  uint32_t hash = 0x424C0000 | (node.unicast_addr & 0xFFFF) | 0x100;
+
+  esphome::App.register_number(num, name, hash, 0);
+
+  node.level_number = num;
+  ESP_LOGI(TAG, "Created number entity '%s' for node 0x%04X", name,
+           node.unicast_addr);
+
+  send_generic_level_get(node.unicast_addr, node.net_idx);
 }
 
 MeshNode *BleMeshGateway::find_node_by_addr(uint16_t addr) {
