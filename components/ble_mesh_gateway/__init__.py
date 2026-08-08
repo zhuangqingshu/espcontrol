@@ -8,6 +8,7 @@ layer can display and control them without modification.
 from __future__ import annotations
 
 import esphome.codegen as cg
+from esphome.components.esp32 import add_idf_sdkconfig_option
 import esphome.config_validation as cv
 from esphome.const import CONF_ID
 
@@ -27,8 +28,14 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
-    cg.add_build_flag("-I${IDF_PATH}/components/bt/esp_ble_mesh/api")
-    cg.add_build_flag("-I${IDF_PATH}/components/bt/esp_ble_mesh/api/core")
-    cg.add_build_flag("-I${IDF_PATH}/components/bt/esp_ble_mesh/include")
-    cg.add_build_flag("-I${IDF_PATH}/components/bt/host/nimble/nimble")
-    cg.add_build_flag("-I${IDF_PATH}/components/bt/host/nimble/port/include")
+    add_idf_sdkconfig_option("CONFIG_BT_ENABLED", True)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_ENABLED", True)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MESH", True)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MESH_PROVISIONER", True)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MESH_PROXY", True)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MESH_RELAY", True)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_ROLE_CENTRAL", True)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_ROLE_OBSERVER", True)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MAX_CONNECTIONS", 4)
+    add_idf_sdkconfig_option("CONFIG_BT_NIMBLE_MSYS1_BLOCK_COUNT", 12)
+    add_idf_sdkconfig_option("CONFIG_BT_CTRL_BLE_MAX_ACT", 10)
