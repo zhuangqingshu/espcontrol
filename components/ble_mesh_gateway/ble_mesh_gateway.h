@@ -22,13 +22,13 @@ class BleMeshGateway : public esphome::Component {
 
   uint8_t node_count() const { return node_count_; }
   const MeshNode *get_node(uint8_t index) const;
+  void start_provisioning(const uint8_t *uuid, const uint8_t *addr,
+                          uint8_t addr_type, uint16_t oob_info);
+  void configure_node(uint16_t node_addr, uint16_t net_idx);
 
  private:
   bool init_ble_controller();
   bool init_ble_mesh();
-  void start_provisioning(const uint8_t *uuid, const uint8_t *addr,
-                          uint8_t addr_type, uint16_t oob_info);
-  void configure_node(uint16_t node_addr, uint16_t net_idx);
 
   static constexpr uint8_t kMaxNodes = 10;
   MeshNode nodes_[kMaxNodes];

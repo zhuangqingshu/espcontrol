@@ -84,48 +84,26 @@ static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
 
     case ESP_BLE_MESH_PROVISIONER_PROV_COMPLETE_EVT: {
       auto &comp = param->provisioner_prov_complete;
-      ESP_LOGI(TAG, "Provisioning complete: node_idx=%d unicast=0x%04X elements=%d net_idx=0x%04X",
-               comp.node_idx, comp.unicast_addr, comp.element_num, comp.netkey_idx);
+      ESP_LOGI(TAG, "Provisioning complete: node_idx=%d unicast=0x%04X elements=%d",
+               comp.node_idx, comp.unicast_addr, comp.element_num);
       if (s_instance) {
         s_instance->configure_node(comp.unicast_addr, comp.netkey_idx);
       }
       break;
     }
 
-    case ESP_BLE_MESH_PROVISIONER_ADD_LOCAL_NET_KEY_COMP_EVT:
-      ESP_LOGI(TAG, "Local net key added, err=%d",
-               param->provisioner_add_local_net_key_comp.err_code);
+    case ESP_BLE_MESH_PROVISIONER_ADD_NET_KEY_COMP_EVT:
+      ESP_LOGI(TAG, "Net key added, err=%d",
+               param->provisioner_add_net_key_comp.err_code);
       break;
 
-    case ESP_BLE_MESH_PROVISIONER_ADD_LOCAL_APP_KEY_COMP_EVT:
-      ESP_LOGI(TAG, "Local app key added, err=%d",
-               param->provisioner_add_local_app_key_comp.err_code);
-      break;
-
-    case ESP_BLE_MESH_PROVISIONER_SET_DEV_UUID_MATCH_COMP_EVT:
-      ESP_LOGI(TAG, "Dev UUID match set, err=%d",
-               param->provisioner_set_dev_uuid_match_comp.err_code);
-      break;
-
-    case ESP_BLE_MESH_PROVISIONER_SET_PROV_DATA_INFO_COMP_EVT:
-      ESP_LOGI(TAG, "Prov data info set, err=%d",
-               param->provisioner_set_prov_data_info_comp.err_code);
-      break;
-
-    case ESP_BLE_MESH_MODEL_EVT:
-      ESP_LOGI(TAG, "Model event received");
+    case ESP_BLE_MESH_PROVISIONER_ADD_APP_KEY_COMP_EVT:
+      ESP_LOGI(TAG, "App key added, err=%d",
+               param->provisioner_add_app_key_comp.err_code);
       break;
 
     default:
       break;
-  }
-}
-
-static void config_client_callback(esp_ble_mesh_cfg_client_cb_event_t event,
-                                   esp_ble_mesh_cfg_client_cb_param_t *param) {
-  ESP_LOGI(TAG, "Config client event: %d", event);
-  if (param) {
-    ESP_LOGI(TAG, "  status=%d", param->params->status);
   }
 }
 
@@ -154,7 +132,7 @@ void BleMeshGateway::start_provisioning(const uint8_t *uuid,
 
 void BleMeshGateway::configure_node(uint16_t node_addr, uint16_t net_idx) {
   if (node_count_ >= kMaxNodes) {
-    ESP_LOGW(TAG, "Node table full, cannot track more devices");
+    ESP_LOGW(TAG, "Node table full");
     return;
   }
 
@@ -164,21 +142,31 @@ void BleMeshGateway::configure_node(uint16_t node_addr, uint16_t net_idx) {
   node.provisioned = true;
   node_count_++;
 
-  ESP_LOGI(TAG, "Node %d configured: unicast=0x%04X", node_count_ - 1, node_addr);
+  ESP_LOGI(TAG, "Node %d stored: unicast=0x%04X", node_count_ - 1, node_addr);
+
+  esp_ble_mesh_msg_ctx_t ctx = {};
+  ctx.net_idx = net_idx;
+  ctx.addr = node_addr;
+  ctx.app_idx = kAppKeyIdx;
+  ctx.send_ttl = 4;
+  ctx.send_rel = false;
+
+  esp_ble_mesh_client_common_param_t common = {};
+  common.opcode = ESP_BLE_MESH_MODEL_OP_MODEL_APP_BIND;
+  common.ctx = ctx;
+  common.msg_timeout = 0;
 
   esp_ble_mesh_cfg_client_set_state_t set_state = {};
   set_state.model_app_bind.element_addr = node_addr;
-  set_state.model_app_bind.app_idx = kAppKeyIdx;
+  set_state.model_app_bind.model_app_idx = kAppKeyIdx;
   set_state.model_app_bind.model_id = 0x1000;
   set_state.model_app_bind.company_id = 0xFFFF;
 
-  esp_err_t ret = esp_ble_mesh_cfg_client_set_state(
-      net_idx, node_addr, &set_state,
-      ESP_BLE_MESH_MODEL_OP_MODEL_APP_BIND);
+  esp_err_t ret = esp_ble_mesh_config_client_set_state(&common, &set_state);
   if (ret != ESP_OK) {
     ESP_LOGW(TAG, "Failed to send model app bind: %d", ret);
   } else {
-    ESP_LOGI(TAG, "Sent app key bind for Generic OnOff (0x1000) on node 0x%04X",
+    ESP_LOGI(TAG, "Sent app key bind for Generic OnOff (0x1000) on 0x%04X",
              node_addr);
   }
 }
@@ -253,7 +241,7 @@ bool BleMeshGateway::init_ble_mesh() {
     return false;
   }
 
-  ESP_LOGI(TAG, "BLE Mesh provisioner started (net_idx=0x%04X, app_idx=0x%04X)",
+  ESP_LOGI(TAG, "BLE Mesh provisioner started (net=0x%04X app=0x%04X)",
            kNetKeyIdx, kAppKeyIdx);
   return true;
 }
