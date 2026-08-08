@@ -12,27 +12,48 @@ namespace ble_mesh_gateway {
 
 static const char *const TAG = "ble_mesh_gateway";
 
-static constexpr uint8_t kDeviceUuid[16] = {0xDD, 0xDD};
+static constexpr uint8_t kDevUuid[16] = {0xDD, 0xDD};
 
-static esp_ble_mesh_prov_t provision = {};
-static esp_ble_mesh_comp_t composition = {};
+static esp_ble_mesh_prov_t provision = {
+    .prov_uuid = kDevUuid,
+    .prov_unicast_addr = 0x0001,
+    .prov_start_address = 0x0002,
+    .prov_attention = 0,
+    .prov_algorithm = 0,
+    .prov_pub_key_oob = 0,
+    .flags = 0,
+    .iv_index = 0,
+};
+
+static esp_ble_mesh_comp_t composition = {
+    .cid = 0xFFFF,
+    .pid = 0x0001,
+    .vid = 0x0001,
+    .element_count = 0,
+    .elements = nullptr,
+};
 
 static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
                                  esp_ble_mesh_prov_cb_param_t *param) {
   switch (event) {
+    case ESP_BLE_MESH_PROV_REGISTER_COMP_EVT:
+      ESP_LOGI(TAG, "Provisioner registered");
+      break;
     case ESP_BLE_MESH_PROVISIONER_RECV_UNPROV_ADV_PKT_EVT: {
       char uuid_str[37];
       for (int i = 0; i < 16; i++) {
-        snprintf(uuid_str + i * 2, 3, "%02X", param->provisioner_recv_unprov_adv_pkt.dev_uuid[i]);
+        snprintf(uuid_str + i * 2, 3, "%02X",
+                 param->provisioner_recv_unprov_adv_pkt.dev_uuid[i]);
       }
-      ESP_LOGI(TAG, "Discovered unprovisioned device UUID=%s addr=%02X:%02X:%02X:%02X:%02X:%02X",
+      ESP_LOGI(TAG, "Discovered device UUID=%s addr=%02X:%02X:%02X:%02X:%02X:%02X rssi=%d",
                uuid_str,
                param->provisioner_recv_unprov_adv_pkt.addr[0],
                param->provisioner_recv_unprov_adv_pkt.addr[1],
                param->provisioner_recv_unprov_adv_pkt.addr[2],
                param->provisioner_recv_unprov_adv_pkt.addr[3],
                param->provisioner_recv_unprov_adv_pkt.addr[4],
-               param->provisioner_recv_unprov_adv_pkt.addr[5]);
+               param->provisioner_recv_unprov_adv_pkt.addr[5],
+               param->provisioner_recv_unprov_adv_pkt.rssi);
       break;
     }
     case ESP_BLE_MESH_PROVISIONER_PROV_LINK_OPEN_EVT:
@@ -43,19 +64,12 @@ static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
                param->provisioner_prov_link_close.reason);
       break;
     case ESP_BLE_MESH_PROVISIONER_PROV_COMPLETE_EVT:
-      ESP_LOGI(TAG, "Provisioning complete");
-      break;
-    case ESP_BLE_MESH_PROVISIONER_ADD_UNPROV_DEV_COMP_EVT:
-      ESP_LOGI(TAG, "Provisioning started");
+      ESP_LOGI(TAG, "Provisioning complete, node_index=%d",
+               param->provisioner_prov_complete.node_idx);
       break;
     default:
       break;
   }
-}
-
-static void config_client_callback(esp_ble_mesh_cfg_client_cb_event_t event,
-                                   esp_ble_mesh_cfg_client_cb_param_t *param) {
-  ESP_LOGI(TAG, "Config client event: %d", event);
 }
 
 bool BleMeshGateway::init_ble_controller() {
@@ -64,7 +78,7 @@ bool BleMeshGateway::init_ble_controller() {
 
   ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
   if (ret != ESP_OK) {
-    ESP_LOGW(TAG, "Failed to release classic BT memory: %s", esp_err_to_name(ret));
+    ESP_LOGW(TAG, "Failed to release classic BT: %s", esp_err_to_name(ret));
   }
 
   ret = esp_bt_controller_init(&bt_cfg);
@@ -87,20 +101,6 @@ bool BleMeshGateway::init_ble_mesh() {
   esp_err_t ret;
 
   esp_ble_mesh_register_prov_callback(provisioner_callback);
-  esp_ble_mesh_register_config_client_callback(config_client_callback);
-
-  provision.prov_uuid = kDeviceUuid;
-  provision.prov_unicast_addr = 0x0001;
-  provision.prov_start_address = 0x0002;
-  provision.prov_attention = 0;
-  provision.prov_algorithm = 0;
-  provision.prov_bearer = 0;
-  provision.flags = ESP_BLE_MESH_PROV_FLAGS_PROVISIONER;
-
-  composition.cid = 0xFFFF;
-  composition.pid = 0x0001;
-  composition.vid = 0x0001;
-  composition.crpl = 10;
 
   ret = esp_ble_mesh_init(&provision, &composition);
   if (ret != ESP_OK) {
@@ -108,12 +108,15 @@ bool BleMeshGateway::init_ble_mesh() {
     return false;
   }
 
-  esp_ble_mesh_provisioner_set_dev_uuid_match(
-      const_cast<uint8_t *>(kDeviceUuid), sizeof(kDeviceUuid), 0, false);
+  ret = esp_ble_mesh_provisioner_set_dev_uuid_match(
+      kDevUuid, sizeof(kDevUuid), 0, false);
+  if (ret != ESP_OK) {
+    ESP_LOGW(TAG, "Set dev UUID match failed: %d", ret);
+  }
 
   ret = esp_ble_mesh_provisioner_prov_enable(
-      static_cast<esp_ble_mesh_prov_bearer_flag_t>(
-          ESP_BLE_MESH_PROV_ADV | ESP_BLE_MESH_PROV_GATT));
+      static_cast<esp_ble_mesh_prov_bearer_t>(ESP_BLE_MESH_PROV_ADV |
+                                              ESP_BLE_MESH_PROV_GATT));
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "Provisioning enable failed: %d", ret);
     return false;
