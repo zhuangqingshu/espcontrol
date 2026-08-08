@@ -92,14 +92,14 @@ static void provisioner_callback(esp_ble_mesh_prov_cb_event_t event,
       break;
     }
 
-    case ESP_BLE_MESH_PROVISIONER_ADD_NET_KEY_COMP_EVT:
+    case ESP_BLE_MESH_PROVISIONER_ADD_LOCAL_NET_KEY_COMP_EVT:
       ESP_LOGI(TAG, "Net key added, err=%d",
-               param->provisioner_add_net_key_comp.err_code);
+               param->provisioner_add_local_net_key_comp.err_code);
       break;
 
-    case ESP_BLE_MESH_PROVISIONER_ADD_APP_KEY_COMP_EVT:
+    case ESP_BLE_MESH_PROVISIONER_ADD_LOCAL_APP_KEY_COMP_EVT:
       ESP_LOGI(TAG, "App key added, err=%d",
-               param->provisioner_add_app_key_comp.err_code);
+               param->provisioner_add_local_app_key_comp.err_code);
       break;
 
     default:
@@ -149,7 +149,6 @@ void BleMeshGateway::configure_node(uint16_t node_addr, uint16_t net_idx) {
   ctx.addr = node_addr;
   ctx.app_idx = kAppKeyIdx;
   ctx.send_ttl = 4;
-  ctx.send_rel = false;
 
   esp_ble_mesh_client_common_param_t common = {};
   common.opcode = ESP_BLE_MESH_MODEL_OP_MODEL_APP_BIND;
