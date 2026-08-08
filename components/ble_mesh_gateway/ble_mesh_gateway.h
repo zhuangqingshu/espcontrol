@@ -36,6 +36,7 @@ class BleMeshGateway : public esphome::Component {
   void set_node_onoff(uint8_t slot, bool state);
   bool get_node_onoff(uint8_t slot) const;
   void register_switch(uint8_t slot, esphome::switch_::Switch *sw);
+  void update_switch_state(uint8_t slot, bool on);
 
  private:
   bool init_ble_controller();
