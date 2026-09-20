@@ -137,6 +137,7 @@ packages:
   screen_clock:    !include ../../common/device/screen_clock.yaml
   screen_art:      !include ../../common/device/screen_cover_art.yaml
   image_cards:     !include ../../common/device/image_cards_2.yaml
+  # mesh_switches are created dynamically by ble_mesh_gateway component (phase 5)
   # ---------------------------------------------------------------------------
   # Main page and dynamic sensor subscriptions (after setup screens)
   # ---------------------------------------------------------------------------

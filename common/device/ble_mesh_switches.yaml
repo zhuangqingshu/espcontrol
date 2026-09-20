@@ -1,0 +1,2 @@
+# BLE Mesh switch entities are now created dynamically when nodes are
+# provisioned (phase 5 - dynamic node discovery). No static YAML entries needed.
