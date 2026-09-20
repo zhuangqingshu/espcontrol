@@ -192,6 +192,30 @@
       "rotation": true,
       "ethernetManualInstall": false,
       "subpages": true
+    },
+    {
+      "slug": "esp32-s3-panel-320",
+      "installSlug": "esp32-s3-panel-320",
+      "name": "ESP32-S3 Panel 320",
+      "docsPath": "/screens/esp32-s3-panel-320",
+      "screenSize": "3.5 inches",
+      "resolution": "320 x 320",
+      "orientation": "Square",
+      "slots": 9,
+      "imageSlots": 2,
+      "imageCardTypes": [
+        "image",
+        "media_cover_art"
+      ],
+      "grid": {
+        "rows": 3,
+        "cols": 3
+      },
+      "chipFamily": "ESP32-S3",
+      "relays": 3,
+      "rotation": true,
+      "ethernetManualInstall": false,
+      "subpages": true
     }
   ]
 }

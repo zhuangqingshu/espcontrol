@@ -1,0 +1,11 @@
+# Name,       Type, SubType, Offset,    Size,      Flags
+#
+# Layout for 8 MB EspControl panels.  The firmware (~4.6 MB) is too large for
+# two OTA slots in 8 MB, so this is a single-app layout: one 5 MB ota_0 slot
+# and no ota_1.  Flash over USB; over-the-air updates are not possible.
+# otadata stays so the bootloader behaves like the dual-slot 16 MB layout.
+# To return to OTA the firmware must first shrink below ~3.8 MB per slot.
+nvs,           data, nvs,     0x9000,    0xd000,
+otadata,       data, ota,     0x16000,   0x2000,
+app0,          app,  ota_0,   0x20000,   0x500000,
+card_images,   data, 0x40,    0x520000,  0x2e0000,
