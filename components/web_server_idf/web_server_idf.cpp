@@ -31,6 +31,9 @@
 
 #ifdef USE_WEBSERVER
 #include "esphome/components/web_server/web_server.h"
+#ifdef USE_CAPTIVE_PORTAL
+#include "esphome/components/captive_portal/captive_portal.h"
+#endif
 #include "esphome/components/web_server/list_entities.h"
 #endif  // USE_WEBSERVER
 
@@ -407,6 +410,16 @@ esp_err_t AsyncWebServer::request_handler_(AsyncWebServerRequest *request) const
   if (handle_firmware_version_request(request)) {
     return ESP_OK;
   }
+#ifdef USE_CAPTIVE_PORTAL
+  // The captive portal registers its handler after web_server's, so web_server would
+  // otherwise answer "/" with the device UI while the fallback AP is up. Let the
+  // portal win while it is active so the WiFi provisioning page is shown.
+  if (captive_portal::global_captive_portal != nullptr && captive_portal::global_captive_portal->is_active() &&
+      captive_portal::global_captive_portal->canHandle(request)) {
+    captive_portal::global_captive_portal->handleRequest(request);
+    return ESP_OK;
+  }
+#endif
   for (auto *handler : this->handlers_) {
     if (handler->canHandle(request)) {
       // At now process only basic requests.
