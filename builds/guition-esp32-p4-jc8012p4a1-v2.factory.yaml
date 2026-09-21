@@ -20,7 +20,7 @@ packages:
 
 esphome:
   project:
-    name: jtenniswood.espcontrol
+    name: chengvin.espcontrol
     version: "${firmware_version}"
 
 dashboard_import:
