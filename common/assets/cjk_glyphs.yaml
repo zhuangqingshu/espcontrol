@@ -1,4 +1,4 @@
-# Chinese (Simplified) label glyphs: smart-home vocabulary + GB2312 level-1 filler, 1000 chars.
+# Chinese (Simplified) label glyphs: smart-home vocabulary + GB2312 level-1 filler, 1000 chars, plus the extra characters used by strings.zh.txt.
 # Keep as a list of strings (see text_glyphs.yaml).
 - "客厅卧室书房厨餐阳台卫生间浴玄关走廊车库花园儿童主次楼上下层灯光开电源插座空调温度湿风速模式制冷热自"
 - "动除送睡眠节能窗帘百叶门锁摄像头传感器磁人体红外烟雾燃气水浸报警安防布撤视音响乐播放暂停一首量静投影"
@@ -20,3 +20,4 @@
 - "肪妨仿访纺菲非啡飞肥匪诽吠肺废沸费芬酚吩氛纷坟焚汾粉奋份忿愤粪丰封枫蜂峰锋疯烽逢冯缝讽奉凤佛否夫敷肤"
 - "孵扶拂辐幅氟符伏俘服浮涪福袱弗甫抚辅俯釜斧脯腑府腐赴副覆赋复傅付阜父腹负富讣附妇缚咐噶嘎该改概钙盖溉"
 - "甘杆柑竿肝赶秆敢赣冈刚钢缸肛纲岗港杠篙皋膏羔糕搞镐稿告哥歌搁戈鸽胳疙割革葛格蛤阁隔铬个各给根跟耕庚羹"
+- "七与世临久义九云以位作倾假允入准切列务助勿区十南卷可向周命址域天太失夹始媒子完密局屏已幕您或户所执扬指换控推支无是显晴曲最有未检每永没浏添清灭然熄现用界盆目知码确示组继续维脚至若获落行装览解认许试语误请载输过运选通配钟闪闲雨雪雷霾面页项预飓龙"

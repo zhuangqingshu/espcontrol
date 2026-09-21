@@ -12,9 +12,9 @@ export const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
   it: "Italiano (Italian)", nb: "Norsk bokmål (Norwegian Bokmål)", nl: "Nederlands (Dutch)",
   pl: "Polski (Polish)", pt: "Português (Portuguese)", "pt-br": "Português (Brasil) (Brazilian Portuguese)",
   ro: "Română (Romanian)", ru: "Русский (Russian)", sk: "Slovenčina (Slovak)", sl: "Slovenščina (Slovenian)",
-  sv: "Svenska (Swedish)", tr: "Türkçe (Turkish)", uk: "Українська (Ukrainian)",
+  sv: "Svenska (Swedish)", tr: "Türkçe (Turkish)", uk: "Українська (Ukrainian)", zh: "简体中文 (Chinese)",
 };
-const LANGUAGE_OPTIONS = ["en", "cs", "da", "de", "es", "fi", "fr", "he", "hu", "it", "nb", "nl", "pl", "pt", "pt-br", "ro", "ru", "sk", "sl", "sv", "tr", "uk"];
+const LANGUAGE_OPTIONS = ["en", "cs", "da", "de", "es", "fi", "fr", "he", "hu", "it", "nb", "nl", "pl", "pt", "pt-br", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "zh"];
 
 function emptyCardConfig(): CardConfig {
   return { entity: "", label: "", icon: "Auto", icon_on: "Auto", sensor: "", unit: "", type: "", precision: "", options: "" };

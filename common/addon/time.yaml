@@ -257,6 +257,7 @@ select:
       - "sv"
       - "tr"
       - "uk"
+      - "zh"
     web_server:
       sorting_group_id: sg_brightness
     on_value:
