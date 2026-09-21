@@ -36,6 +36,8 @@ font:
     extras:
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+      - file: "gfonts://Noto Sans SC"
+        glyphs: !include ../../../common/assets/cjk_glyphs.yaml
 
   # Smaller secondary text
   - file: "gfonts://Roboto"
@@ -46,6 +48,8 @@ font:
     extras:
       - file: "gfonts://Heebo"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+      - file: "gfonts://Noto Sans SC"
+        glyphs: !include ../../../common/assets/cjk_glyphs.yaml
 
   # Headings and media titles
   - file: "gfonts://Roboto@Light"
