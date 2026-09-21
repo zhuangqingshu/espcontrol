@@ -60,6 +60,8 @@ font:
     extras:
       - file: "gfonts://Heebo@Light"
         glyphs: !include ../../../common/assets/hebrew_glyphs.yaml
+      - file: "gfonts://Noto Sans SC"
+        glyphs: !include ../../../common/assets/cjk_title_glyphs.yaml
 
   # Media cover-art screensaver title
   - file: "gfonts://Roboto@Light"
