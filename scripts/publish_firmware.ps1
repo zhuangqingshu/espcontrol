@@ -9,7 +9,7 @@
   .\scripts\publish_firmware.ps1 -Version v1.0.0 -DryRun          # build + manifest only, no upload
 
 .NOTES
-  Server layout (BaseUrl = http://file.myainet.com/espcontrol/firmware):
+  Server layout (BaseUrl = http://file.myainet.com/esphome/espcontrol/firmware):
     <RemoteRoot>/<slug>/manifest.json                  <- what devices poll (uploaded last)
     <RemoteRoot>/<slug>/<slug>.ota.bin                 <- OTA image
     <RemoteRoot>/<slug>/<slug>.factory.bin             <- first-time flashing image
@@ -35,8 +35,8 @@ param(
     [int]$Port            = 1994,
     [string]$IdentityFile = 'D:\Workspace\thingsboard\47.110.53.106_id_ed25519',
     # Nginx root for file.myainet.com is /www/wwwroot/file.myainet.com (Baota panel).
-    [string]$RemoteRoot   = '/www/wwwroot/file.myainet.com/espcontrol/firmware',
-    [string]$BaseUrl    = 'http://file.myainet.com/espcontrol/firmware',
+    [string]$RemoteRoot   = '/www/wwwroot/file.myainet.com/esphome/espcontrol/firmware',
+    [string]$BaseUrl    = 'http://file.myainet.com/esphome/espcontrol/firmware',
 
     # Defaults to esphome on PATH, else the workspace dev venv (D:\Workspace\esphome\esphome\venv).
     [string]$Esphome    = '',

@@ -10,7 +10,7 @@
 substitutions:
   firmware_version: "dev"
   # Where manifest.json and the OTA image are published (see scripts/publish_firmware.ps1).
-  firmware_update_base_url: "http://file.myainet.com/espcontrol/firmware"
+  firmware_update_base_url: "http://file.myainet.com/esphome/espcontrol/firmware"
 
 esphome:
   project:
