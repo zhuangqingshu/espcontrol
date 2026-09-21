@@ -32,7 +32,8 @@ dashboard_import:
 web_server:
   port: 80
   version: 3
-  js_url: https://jtenniswood.github.io/espcontrol/webserver/www.js?device=${device_slug}&v=${firmware_version}&ui=20260714-shared
+  # Empty: always use the www.js embedded in the firmware (js_include below), no remote bundle.
+  js_url: ""
   js_include: "../docs/public/webserver/embedded/www.js"
 
 wifi:

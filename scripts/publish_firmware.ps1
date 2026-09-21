@@ -3,10 +3,10 @@
   Build a release firmware, generate manifest.json and publish both to the update server.
 
 .EXAMPLE
-  .\scripts\publish_firmware.ps1 -Version 1.0.0
-  .\scripts\publish_firmware.ps1 -Version 1.0.1 -Slug esp32-s3-panel-320 -User deploy
-  .\scripts\publish_firmware.ps1 -Version 1.0.0 -SkipCompile     # reuse the last build output
-  .\scripts\publish_firmware.ps1 -Version 1.0.0 -DryRun          # build + manifest only, no upload
+  .\scripts\publish_firmware.ps1 -Version v1.0.0
+  .\scripts\publish_firmware.ps1 -Version v1.0.1 -Slug esp32-s3-panel-320 -User deploy
+  .\scripts\publish_firmware.ps1 -Version v1.0.0 -SkipCompile     # reuse the last build output
+  .\scripts\publish_firmware.ps1 -Version v1.0.0 -DryRun          # build + manifest only, no upload
 
 .NOTES
   Server layout (BaseUrl = http://file.myainet.com/espcontrol/firmware):
@@ -22,7 +22,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidatePattern('^\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$')]
+    # Must look like v1.2.3: the setup page only recognises versions with a leading "v".
+    [ValidatePattern('^v\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$')]
     [string]$Version,
 
     [string]$Slug = 'esp32-s3-panel-320',
