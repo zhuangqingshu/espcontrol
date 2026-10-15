@@ -1,0 +1,26 @@
+# =============================================================================
+# IMPROV BLE - WiFi provisioning over Bluetooth
+# =============================================================================
+# Lets Home Assistant (or the Improv web app) send WiFi credentials over BLE
+# while the panel has no working WiFi. Runs alongside the fallback hotspot and
+# captive portal; whichever method is used first wins. Improv stops on its own
+# once WiFi connects.
+# =============================================================================
+
+esp32:
+  framework:
+    sdkconfig_options:
+      # Improv only advertises and serves GATT. Drop BLE scanning and the RF test
+      # mode so the firmware still fits the 5 MB app slot.
+      CONFIG_BT_BLE_42_SCAN_EN: "n"
+      CONFIG_BT_BLE_42_DTM_TEST_EN: "n"
+      CONFIG_BT_CTRL_BLE_SCAN: "n"
+      CONFIG_BT_CTRL_DTM_ENABLE: "n"
+
+esp32_ble:
+  # Keep Bluedroid buffers out of the internal RAM that the display stack needs.
+  use_psram: true
+
+esp32_improv:
+  # The panel has no spare physical button, so no authorization step.
+  authorizer: none

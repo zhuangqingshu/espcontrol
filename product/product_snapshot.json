@@ -1790,6 +1790,9 @@
             "screen_schedule_clock_default_brightness": "\"10\""
           },
           "deviceFontPackageKey": "fonts_device",
+          "extraPackages": {
+            "improv_ble": "!include ../../common/addon/improv_ble.yaml"
+          },
           "apiNavigateAction": false
         }
       },

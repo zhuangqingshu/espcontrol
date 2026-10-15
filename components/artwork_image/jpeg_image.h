@@ -4,6 +4,10 @@
 #include "esphome/core/defines.h"
 #ifdef USE_ARTWORK_IMAGE_JPEG_SUPPORT
 #include <jpeglib.h>
+// jmorecfg.h defines TRUE/FALSE. Leaking them breaks ESP-IDF Bluedroid headers, which test
+// `BLE_42_FEATURE_SUPPORT == TRUE` without defining that macro (needed by esp32_ble on S3).
+#undef TRUE
+#undef FALSE
 #include <csetjmp>
 #include <cstddef>
 #include <cstdint>

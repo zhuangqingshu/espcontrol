@@ -139,6 +139,9 @@
       },
       "package": {
         "firmwareVersion": "dev",
+        "extraPackages": {
+          "improv_ble": "!include ../../common/addon/improv_ble.yaml"
+        },
         "subpageConfigChunks": 4,
         "substitutions": {
           "screen_width": "\"320\"",
